@@ -3,7 +3,6 @@ var express = require('express');
 var router = express.Router();
 var mongo = require('mongodb');
 var Article = require('../models/Article.js');
-var multer  = require('multer');
 
 router.post('/:id', function(req, res) {
 	var busboy = new Busboy({ headers : req.headers });
@@ -62,6 +61,15 @@ router.get('/files/:id', function(req, res) {
 		});
 
     readstream.pipe(res);
+	});
+});
+
+router.delete('/remove/:id',function(req,res){
+	var gfs = req.app.get('gridfs');
+	gfs.remove({ _id:req.params.id }, function (err,post) {
+		if (err) console.log('File was not deleted....');
+		console.log('successfully removed file along with article deletion....');
+		res.json(post);
 	});
 });
 
