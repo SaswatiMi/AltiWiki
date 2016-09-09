@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html ng-app="app">
+  <head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+  </head>
+  <body>
+	<header>
+    <h1 style="color:green;">AltiWiki</h1>
+		<div>
+			<tr><a href="#"><button>Home</button></a></tr>
+			<tr><a href="#browse"><button>Browse Articles</button></a></tr>
+			<tr><a href="#create"><button>Create Article</button></a></tr>
+			<tr><input type="text" ng-model="token"></tr>
+			<tr><a href="#search"><button>Search</button></a></tr>
+		</div>
+	</header>
+	<div id="main">
+		<div ng-view></div>
+	</div>
+    <!-- Libraries -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular-route.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular-resource.min.js"></script>
+	
+	<!-- Template -->
+	
+    <script type="text/ng-template" id="/home.html">
+		<p><em><b>WelCome to AltiWiki.</b><br><br><small>AltiWiki is A central Knowledge base for Altimetrik Employees. 
+		It provides articles in form of documents to help the users find the required knowledge.<br>
+		Explore the Knowledge Base.</small><br></em>
+		</p><br><br>
+    </script>
+	
+	<script type="text/ng-template" id="/browse.html">
+	<div>
+		<br><label>All<input type="radio" ng-model="target" name="istech" value="all"></label>&nbsp&nbsp&nbsp&nbsp
+			<label>Technical<input type="radio" ng-model="target" name="istech" value="technical"></label>&nbsp&nbsp&nbsp&nbsp
+			<label>Non-technical<input type="radio" ng-model="target" name="istech" value="non-technical"></label><br>
+		<br><em><small>Showing </small><b style="color:blue;">{{target}}</b><small> articles....</small></em><br>
+		<ul>
+			<li ng-repeat="article in articles" ng-if="target=='all'">
+				<a href="#/view/{{article._id}}">{{article.name}}</a>
+				<button ng-click="delete($index)"><small>delete</small></button>
+			</li>
+			<li ng-repeat="article in articles | filter : article.tech=true" ng-if="target=='technical'">
+				<a href="#/view/{{article._id}}">{{article.name}}</a>
+			</li>
+			<li ng-repeat="article in articles | filter : article.tech=false" ng-if="target=='non-technical'">
+				<a href="#/view/{{article._id}}">{{article.name}}</a>
+			</li>
+		</ul>
+	</div>
+	</script>
+	
+	<script type="text/ng-template" id="/create.html">
+		<em style="color:blue;"><br><small>Create an article for Altiwiki database.</small></em><br><br>
+		<form method="post" enctype="multipart/form-data">
+			Article Name: <input type="text" ng-model="name" name="name" id="name"required><small>&nbsp Length minimum 4 characters</small><br><br>
+			Technical Article: <input type="radio" ng-model="tech" name="istech" value="true"<label>Yes</label>
+			<input type="radio" ng-model="tech" name="istech" value="false"><label>No</label><br><br>
+			<button type="submit" ng-click="create()">Create</button><br><br>
+		</form><br><br>
+	</script>
+	
+	<script type="text/ng-template" id="/search.html">
+		<p ng-show="token!=null"><br><em><small>Showing Results for : <b>{{token}}</b></small></em><br>
+		<p ng-show="token==null" style="color:red;"><b><small>No inputs provided...Showing all records</small></b></p>
+		<ul>
+			<li ng-repeat="article in filtered =(articles | filter: token)">
+				<a href="#/view/{{article._id}}">{{article.name}}</a>
+			</li>
+		</ul>
+	</script>
+	
+	<script type="text/ng-template" id="/view.html">
+		<p><br><em>Showing Article : <b style="color:green;">{{article.name}}</b></em><br>
+		<form method="post" enctype="multipart/form-data" action="{{upload_url}}">
+			<label style="color:red;" ng-show="article.content==''"><em><b><small>No documents found for this article.....upload a file!!</small></b></em></label>
+			<label style="color:blue;" ng-show="article.content!=''"><em><b><small>Download the contents or upload a new file to update the content..!!</small></b></em></label>
+			<br><br>
+			<input type="file" name="file" required><br><br>
+			<button type="submit">Save/Update</button><br><br>
+		</form><br><br>
+		<a href="/upload/files/{{article.content}}" ng-if="article.content!=''"><button >Download</button>
+	</script>
+	
+	<script type="text/ng-template" id="/success.html">
+		<p style="color:green;"><br><br><br><em>Article updated successfully..</em><br><br><br>
+		<a href="#">Home</a>&nbsp&nbsp&nbsp
+		<a href="#browse">Browse Articles</a>
+	</script>
+	
+    <script>
+      angular.module('app', ['ngRoute', 'ngResource'])
+
+        .factory('Articles', ['$resource', function($resource){
+			 return $resource('/articles/:id', null, {
+				'update': { method:'PUT' }
+			});
+        }])
+
+        .controller('browseCtrl', ['$scope', 'Articles', function ($scope, Articles) {
+			$scope.target="all";
+            $scope.articles = Articles.query();
+			
+			$scope.delete = function(index){
+				var article = $scope.articles[index];
+				Articles.delete({id: article._id}, function(){
+				$scope.articles.splice(index, 1);
+            });
+         }
+        }])
+		
+		.controller('searchCtrl', ['$scope', '$routeParams', 'Articles', '$location', function ($scope, $routeParams, Articles, $location) {
+		    $scope.articles = Articles.query();
+        }])
+		
+		.controller('createCtrl', ['$scope', 'Articles', function ($scope, Articles) {
+			$scope.articles = Articles.query();
+			$scope.tech="true";
+		  
+			$scope.create = function(){
+				if($scope.name.length < 4) return;
+				var article = new Articles({ name: $scope.name, tech: $scope.tech, content: '' });
+				article.$save(function(){
+					$scope.articles.push(article);
+				});
+				$scope.name= '';
+				$scope.tech= 'true';
+			}
+        }])
+		
+		.controller('viewCtrl', ['$scope', '$routeParams', 'Articles', function ($scope, $routeParams, Articles) {
+			$scope.article = Articles.get({id: $routeParams.id });
+			$scope.upload_url = '/upload/'+$routeParams.id;
+        }])
+
+        .config(['$routeProvider', function ($routeProvider) {
+          $routeProvider
+            .when('/', {
+              templateUrl: '/home.html',
+              controller: 'homeCtrl'
+            })
+			
+			.when('/browse', {
+			  templateUrl: '/browse.html',
+			  controller: 'browseCtrl'
+			})
+			
+			.when('/create', {
+			  templateUrl: '/create.html',
+			  controller: 'createCtrl'
+			})
+			
+			.when('/search', {
+			  templateUrl: '/search.html',
+			  controller: 'searchCtrl'
+			})
+			
+			.when('/success', {
+				templateUrl: '/success.html',
+				controller: 'viewCtrl'
+			})
+			
+			.when('/view/:id',{
+				templateUrl: '/view.html',
+				controller: 'viewCtrl'
+			});
+        }]);
+    </script>
+  </body>
+</html>
