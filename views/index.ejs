@@ -95,12 +95,12 @@
       angular.module('app', ['ngRoute', 'ngResource'])
 
         .factory('Articles', ['$resource', function($resource){
-			 return $resource('/articles/:id', null, {
+			return $resource('/articles/:id', null, {
 				'update': { method:'PUT' }
 			});
         }])
 
-        .controller('browseCtrl', ['$scope', 'Articles', function ($scope, Articles) {
+        .controller('browseCtrl', ['$scope', 'Articles', '$http', function ($scope, Articles, $http) {
 			$scope.target="all";
             $scope.articles = Articles.query();
 			
@@ -108,6 +108,11 @@
 				var article = $scope.articles[index];
 				Articles.delete({id: article._id}, function(){
 				$scope.articles.splice(index, 1);
+				$http.delete('/upload/remove/:id',{ params : { id : article.content }}).then(function(response) {
+					console.log(response.data);
+				}, function(rejection) {
+				console.log(rejection.data);
+				});
             });
          }
         }])
